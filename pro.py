@@ -15,7 +15,7 @@ import requests
 from bs4 import BeautifulSoup
 import time
 import pandas as pd
-import urllib3
+import urllib.request
 
 # Set up chrome driver
 url = 'https://finviz.com/screener.ashx?&ft=4'
@@ -59,35 +59,39 @@ url = 'https://finviz.com/screener.ashx?&ft=4'
 driver = webdriver.Chrome(r'C:\Users\edoar\Downloads\chromedriver_win32\chromedriver.exe')
 driver.get(url)
 
-N_of_ticks = 50
-N_of_pages = math.ceil(N_of_ticks/20)
-pages = driver.find_elements_by_class_name('body-table screener_pagination')
 
-weburl = driver.current_url
-driver.quit()
-
-http = urllib3.PoolManager()
-req = http.request("GET", "https://finviz.com/screener.ashx?&ft=4")
-soup = BeautifulSoup(req.data, 'html.parser')
-table = soup.find_all('a', class_='screener-link-primary')
-
-access_token = req.data.decode('UTF-8')
-req.data
-
-
-for a in soup.find_all('a', class_='screener-link-primary'):
-    print("Found the URL:", a['href']) 
-
-
-yyy = []
-for i in range(1,N_of_pages):
-    xxx = weburl + '&r=' + str(1+i*20) 
-    driver.get(xxx)
-    yyy = driver.find_elements_by_class_name('screener-link-primary')
-    print(xxx)
+# Retrive n of ticks from a search query
+def retrieveTicks(webUrl, N_of_ticks):
+    N_of_pages = math.ceil(N_of_ticks/20)
+    #Main page
+    ticks = retrieveTicksFromPage(webUrl)
+    #Subsequent pages
+    for i in range(1,N_of_pages):
+        xxx = url + '&r=' + str(1+i*20)
+        ticks.extend(retrieveTicksFromPage(xxx))
+        print(xxx)
+    return ticks[:N_of_ticks]
     
+# yyy = retrieveTicks(url, 20) #Test
+
+# Downloads ticks table from url
+def retrieveTicksFromPage(webUrl):
+    # Get html from main filter page, ft=4 ensures all filters are present
+    hdr = {
+           "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.11 (KHTML, like Gecko) "
+           "Chrome/23.0.1271.64 Safari/537.11"
+    }
+    req = urllib.request.Request(webUrl, headers=hdr)
+    with urllib.request.urlopen(req) as response:
+                html = response.read().decode("utf-8")
     
-    
+    soup = BeautifulSoup(html, 'html.parser')
+    table = soup.find_all('a', class_='screener-link-primary')
+    ticks = []
+    for t in table:
+        ticks.append(t.text)
+    return ticks
+
     
 
 
